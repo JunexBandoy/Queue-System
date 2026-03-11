@@ -1,0 +1,15 @@
+export const routes = {
+  HOME: "/",
+  DASHBOARD: "/dashboard",
+  LOGIN: "/login",
+  SIGNUP: "/signup",
+  QUEUE: "/payments",
+  EMPLOYEE: "/payments",
+  INVENTORY: "/payments",
+  HISTORY: "/history",
+  LAYAWAY: "/layaway",
+  BOOKINGS: "/bookings",
+  BK_DAYS: "/by-day",
+  BK_MONTHS: "/by-month",
+  BK_YEAR: "/by-year",
+};

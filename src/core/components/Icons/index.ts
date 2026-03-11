@@ -1,0 +1,1 @@
+export {PPDLogoFull} from "./PPDLogoFull"

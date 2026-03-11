@@ -1,0 +1,15 @@
+{
+  "APIBaseUrl": "https://localhost:7034",
+  "ReportsBaseUrl": "",
+  "firebase": {
+    "apiKey": "",
+    "authDomain": "",
+    "projectId": "",
+    "storageBucket": "",
+    "messagingSenderId": "",
+    "appId": "",
+    "measurementId": ""
+  },
+  "appEnv": "development",
+  "build": "local-dev"
+}
