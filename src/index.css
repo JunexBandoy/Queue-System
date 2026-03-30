@@ -15,3 +15,409 @@ code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+/* Make the header a horizontal row with two ends */
+.header {
+  height: 70px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Keep only the left 35% green */
+.header .left {
+  width: 56%;
+  text-align: center;
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+  font-size: 24px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #08ddb8;
+  position: relative;
+  letter-spacing: 2px;
+}
+
+.header .l-text {
+  display: flex;
+  flex-direction: column;
+}
+.header .right {
+  width: 100%;
+  margin-right: 30px;
+  text-align: right;
+  display: flex;
+}
+
+.header .text {
+  height: 100%;
+}
+.main {
+  width: 100%;
+
+  display: flex;
+  position: relative;
+}
+.main .main-left {
+  width: 55%;
+  height: 100%;
+}
+.main .main-left-content {
+  height: 470px;
+}
+.main .main-left-text {
+  text-align: center;
+  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+  font-size: 18px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #08ddb8;
+  position: relative;
+  letter-spacing: 2px;
+}
+.main .main-right {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+.video-wrapper {
+  width: 100%;
+  border-color: black;
+  border-bottom: 5px !important;
+  position: relative;
+}
+
+.video-wrapper iframe {
+  width: 100%;
+  height: 500px;
+  position: relative;
+  border-color: black;
+  border-bottom: 5px !important;
+}
+
+.main-left table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.main-left thead th {
+  border-bottom: 2px solid #03d79a;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.main-left tbody td {
+  border-bottom: 2px solid #03d79a;
+  padding: 8px;
+  text-align: center;
+  font-size: 30px;
+}
+
+tbody td .service {
+  font-size: 10px !important;
+}
+
+.logo {
+  width: 80px;
+  height: 50px;
+  padding: 5px;
+  background-image: url("./assets/logo.png"); /* <-- this is the right path */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.logo2 {
+  width: 80px;
+  height: 50px;
+  padding: 5px;
+  background-image: url("./assets/logo2.png"); /* <-- this is the right path */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.header .l1 {
+  width: 50%;
+  display: flex;
+}
+.header .r1 {
+  width: 50%;
+  height: 100%;
+}
+.header .right-text {
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  font-weight: 500;
+  font-family:
+    "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
+}
+
+/* The visible area */
+.slider-viewport {
+  position: relative;
+  width: 100%;
+}
+
+/* The moving strip */
+.slider-track {
+  display: flex;
+  flex-wrap: nowrap; /* IMPORTANT: never wrap to next line */
+  will-change: transform;
+}
+
+/* Each slide must be exactly viewport width */
+.carousel,
+.carousel1,
+.carousel2,
+.carousel3,
+.carousel4,
+.carousel5 {
+  flex: 0 0 100%; /* <-- CRITICAL: one full viewport per slide */
+  min-height: 190px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center; /* was 100%, use center for safety */
+}
+
+/* Use ABSOLUTE paths so the popup can resolve assets */
+.carousel {
+  background-image: url("./assets/1.png");
+}
+.carousel1 {
+  background-image: url("./assets/2.png");
+}
+.carousel2 {
+  background-image: url("./assets/3.png");
+}
+.carousel3 {
+  background-image: url("./assets/4.png");
+}
+.carousel4 {
+  background-image: url("./assets/5.png");
+}
+.carousel5 {
+  background-image: url("./assets/6.png");
+}
+.carousel6 {
+  background-image: url("./assets/7.png");
+}
+.carousel7 {
+  background-image: url("./assets/8.png");
+}
+.carousel8 {
+  background-image: url("./assets/9.png");
+}
+.main-left tbody .waitingqnumber {
+  font-size: 12px !important;
+}
+.main-left tbody .waitingservice {
+  font-size: 12px !important;
+}
+.waiting-content tbody td {
+  padding: unset !important;
+}
+.waiting-content .waiting td {
+  padding: unset !important;
+}
+.waiting-content {
+  position: relative;
+}
+.info {
+  position: realtive;
+  width: 100%;
+  height: 50px;
+  padding: 5px;
+  background-color: #e7eae9;
+  text-align: center;
+}
+/* Marquee container: hides overflow and gives height */
+.marquee-viewport {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  /* Adjust height/padding to your footer design */
+  padding: 6px 0;
+  background: black; /* or your footer background */
+  color: white;
+}
+
+/* The moving strip */
+.marquee-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content; /* Let content dictate width */
+  gap: 0; /* No gap between the two groups */
+  will-change: transform;
+  animation: marquee-scroll 24s linear infinite; /* Duration controls speed */
+}
+
+/* One set of messages */
+.marquee-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2rem; /* Space between items */
+  padding-right: 2rem; /* Extra spacing so bullets aren't cramped */
+  white-space: nowrap; /* Keep items in one line */
+  font-weight: 500; /* Style as you like */
+  /* color: #111; */
+  /* font-size: 14px; */
+}
+
+/* Optional: soft fade at edges (requires background matching) */
+.marquee-viewport::before,
+.marquee-viewport::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  pointer-events: none;
+}
+
+.marquee-viewport::before {
+  left: 0;
+  /* fade from bg to transparent; adjust colors */
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 1),
+    rgba(255, 255, 255, 0)
+  );
+}
+.marquee-viewport::after {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgba(255, 255, 255, 1),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+/* The animation: shift left by half of the track's total width
+   because we duplicated the content (2 groups) */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* Move left by 50% of the track width so the second copy aligns with the start */
+    transform: translateX(-50%);
+  }
+}
+
+/* Accessibility: respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.6s ease-out forwards;
+}
+
+/* ✅ Blink animation */
+@keyframes blinkPulse {
+  0% {
+    background-color: rgba(255, 255, 0, 0.4);
+  }
+  50% {
+    background-color: rgba(255, 255, 0, 0.1);
+  }
+  100% {
+    background-color: rgba(255, 255, 0, 0.4);
+  }
+}
+
+.blink {
+  animation: blinkPulse 1s ease-in-out infinite;
+}
+/* Dimmed background */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 15, 15, 0.65);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Modal box */
+.modal-content {
+  background: white;
+  padding: 40px 60px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.4);
+  animation: popIn 0.4s ease-out;
+}
+
+/* Typography */
+.modal-number {
+  font-size: 36px;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 3px;
+}
+
+.modal-big {
+  font-size: 80px;
+  font-weight: 900;
+  color: #0a58ca;
+  margin: 10px 0;
+  text-shadow: 0px 0px 10px rgba(0, 119, 255, 0.45);
+}
+
+.modal-service {
+  font-size: 32px;
+  font-weight: 600;
+  color: #111;
+}
+
+/* Fade */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slide + pop */
+@keyframes popIn {
+  0% {
+    transform: translateY(40px) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+    opacity: 1;
+  }
+}

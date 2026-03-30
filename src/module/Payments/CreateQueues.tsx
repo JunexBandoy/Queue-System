@@ -8,14 +8,16 @@ import {
 import { QueuesServices } from "../../services/Queues";
 
 interface Iprops {
+  loadData?: () => void;
   Onclick: (didCreate?: boolean) => void;
 }
 
-export const CreateQueues: React.FC<Iprops> = ({ Onclick }) => {
+export const CreateQueues: React.FC<Iprops> = ({ Onclick, loadData }) => {
   const handleSubmit = async (values: QueuesViewModel) => {
     try {
       const response = await QueuesServices.create(values);
       console.log("Queue created successfully", response.data);
+      loadData?.();
       Onclick(true); // close modal after success
     } catch (error) {
       console.error("There was an error creating the queue:", error);

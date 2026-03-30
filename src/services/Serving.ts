@@ -1,19 +1,12 @@
 import axios from "axios";
-import { api } from "../config/apiEndpoints";
+
 import { getDataUrl } from "../core/utils/dataUrls";
 import { ServingTableResultViewModel } from "../models/ViewServing";
+import { api } from "./Api";
 
 const API_URL = "http://127.0.0.1:8000/api/serving";
 
 export const ServingServices = {
-  getList: async function (page: number = 1, pageSize: number = 10) {
-    let dataUrl = getDataUrl(api.BASE_URL, api.CLIENT_ENDPOINT, page, pageSize);
-
-    return axios.get(dataUrl).then((response) => {
-      return response.data as Promise<ServingTableResultViewModel>;
-    });
-  },
-
   getAll: async () => {
     try {
       const response = await axios.get(API_URL);
@@ -28,5 +21,15 @@ export const ServingServices = {
 
   updateStatus: async (id: number) => {
     return axios.put(`${API_URL}/${id}/status`);
+  },
+
+  getAllServing: async () => {
+    try {
+      const res = await api.get("/api/serving");
+      return res.data?.data ?? [];
+    } catch (e) {
+      console.error("Error fetching serving queues", e);
+      return [];
+    }
   },
 };

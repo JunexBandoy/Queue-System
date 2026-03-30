@@ -41,9 +41,9 @@ export const Layout: React.FC<Props> = ({ children }) => {
 
   const routesMap: Record<string, string> = {
     [routes.DASHBOARD]: "Dashboard",
-    [routes.LAYAWAY]: "layaway",
+    [routes.ACCOUNTS]: "accounts",
     [routes.QUEUE]: "QUEUING",
-    [routes.HISTORY]: "history",
+    [routes.HISTORY]: "Reports",
   };
   const location = useLocation();
   const pageTitle = routesMap[location.pathname] || "";

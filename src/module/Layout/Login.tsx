@@ -30,7 +30,7 @@ export default function LoginForm() {
       if (role === "admin") {
         window.location.href = "#/"; // land on Home
       } else {
-        window.location.href = "#/payments"; // land on Payments/Queue
+        window.location.href = "#/queque"; // land on Payments/Queue
       }
     } catch (error: any) {
       alert(error?.response?.data?.message || "Login failed");

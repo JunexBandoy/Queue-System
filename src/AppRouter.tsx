@@ -25,7 +25,7 @@ function RoleLanding() {
   if (role === "admin") {
     return <Home />;
   } else {
-    return <Navigate to="/payments" replace />;
+    return <Navigate to="/queque" replace />;
   }
 }
 
@@ -51,7 +51,7 @@ export const AppRouter = createHashRouter([
             element: <Dashboard />,
           },
           {
-            path: "payments",
+            path: "queque",
             element: <Payments />,
             children: [
               {
@@ -61,7 +61,7 @@ export const AppRouter = createHashRouter([
             ],
           },
           {
-            path: "layaway",
+            path: "accounts",
             element: <Properties />,
             children: [
               {
@@ -75,7 +75,7 @@ export const AppRouter = createHashRouter([
             ],
           },
           {
-            path: "history",
+            path: "reports",
             element: <Bookings />,
             children: [
               {

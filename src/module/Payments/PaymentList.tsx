@@ -31,6 +31,10 @@ export const PaymentList = () => {
     }
   };
 
+  const loadData = async () => {
+    await Promise.all([fetchWaiting()]);
+  };
+
   const fetchWaiting = async () => {
     try {
       const waiting = await QueuesServices.getAllWaiting();
@@ -99,6 +103,7 @@ export const PaymentList = () => {
   const doneStatus = async (id: number) => {
     try {
       await QueuesServices.DoneStatus(id);
+      window.location.reload();
     } catch (error) {
       console.error("Error Updating Serving queue", error);
     }
@@ -545,7 +550,10 @@ export const PaymentList = () => {
 
         {show && (
           <Modal show={true}>
-            <CreateQueues Onclick={() => setShow(false)} />
+            <CreateQueues
+              Onclick={() => setShow(false)}
+              loadData={loadData} // ✅ refresh tables
+            />
           </Modal>
         )}
       </Box>

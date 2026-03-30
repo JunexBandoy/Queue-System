@@ -5,7 +5,6 @@ import { SideBarMenuContainer } from "./SideBarMenuContainer";
 import { routes } from "../../../config/routes";
 import { useEffect, useMemo, useState } from "react";
 import {
-  CalendarIcon,
   HomeIcon,
   QueueListIcon,
   ReceiptPercentIcon,
@@ -20,39 +19,44 @@ interface Props {
 export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
   const initial = displayName ? displayName.charAt(0).toUpperCase() : "";
   const eMail = email || "";
+
   const [activeMenu, setActiveMenu] = useState<string | null>(
     localStorage.getItem("activeMenu") || null,
   );
+
   const location = useLocation();
 
-  // --- NEW: get role from localStorage (as saved in your login flow) ---
+  // Read role from localStorage.user.role and normalize to lowercase
   const role = useMemo(() => {
     try {
       const raw = localStorage.getItem("user");
       if (!raw) return null;
       const user = JSON.parse(raw);
-      return user?.role ?? null;
+      const r = (user?.role ?? "").toString().trim().toLowerCase();
+      return r || null; // "admin" or "user"
     } catch {
       return null;
     }
   }, [location.pathname]);
-  // ---------------------------------------------------------------------
 
-  const setActiveMenuByRoute = (route: any) => {
-    if (route === routes.HOME) {
+  const isAdmin = role === "admin";
+  const isUser = role === "user"; // everything non-admin defaults to limited view
+
+  const setActiveMenuByRoute = (routePath: string) => {
+    if (routePath === routes.HOME) {
       setActiveMenu("home");
-    } else if (route === routes.LAYAWAY) {
-      setActiveMenu("layaway");
-    } else if (route === routes.QUEUE) {
-      setActiveMenu("payments"); // your existing key for the queue menu
-    } else if (route === routes.HISTORY) {
-      setActiveMenu("history");
-    } else if (route === routes.DASHBOARD) {
-      setActiveMenu("dashboard");
-    } else if (route === routes.EMPLOYEE) {
-      setActiveMenu("dashboard");
-    } else if (route === routes.INVENTORY) {
-      setActiveMenu("dashboard");
+    } else if (routePath === routes.ACCOUNTS) {
+      setActiveMenu("accounts");
+    } else if (routePath === routes.QUEUE) {
+      setActiveMenu("queque"); // keep your existing key
+    } else if (routePath === routes.HISTORY) {
+      setActiveMenu("reports");
+    } else if (routePath === routes.DASHBOARD) {
+      setActiveMenu("dashobard"); // note: your key is "dashobard" (typo preserved)
+    } else if (routePath === routes.EMPLOYEE) {
+      setActiveMenu("dashobard");
+    } else if (routePath === routes.INVENTORY) {
+      setActiveMenu("dashobard");
     }
   };
 
@@ -61,21 +65,30 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
     setActiveMenuByRoute(location.pathname);
   }, [location.pathname]);
 
-  const handleMenuClick = (menu: any) => {
+  // Optional: keep activeMenu valid for the current role
+  useEffect(() => {
+    const current = localStorage.getItem("activeMenu");
+    if (!current) return;
+
+    if (isUser) {
+      // user can only see "queque"
+      if (current !== "queque") {
+        localStorage.setItem("activeMenu", "queque");
+        setActiveMenu("queque");
+      }
+    }
+    // admins can keep any of the defined keys
+  }, [isAdmin, isUser]);
+
+  const handleMenuClick = (menu: string) => {
     setActiveMenu(menu);
     localStorage.setItem("activeMenu", menu);
   };
 
-  const activeMenuClass = (menu: any) =>
+  const activeMenuClass = (menu: string) =>
     activeMenu === menu
       ? "shadow-lg text-black py-0.5 font-semibold text-[14px] pl-8 pr-4 w-full space-y-3 border-b-2 border-[#03D79A]"
       : "hover:shadow-lg fill-[#27401A] pr-4 pl-8 py-0.5 hover:bg-gray-200 w-full hover:font-semibold text-[14px] space-y-3";
-
-  // --- Decide what to render based on role ---
-  const isAdmin = role === "admin"; // change if your admin value differs
-  const isSubAdmin = role === "Subadmin";
-  // For non-admins, show only the Queue (Payments) section.
-  // ---------------------------------------------------------------------
 
   return (
     <>
@@ -93,7 +106,7 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
         </div>
 
         <div className="block gap-2 divide-y-2 divide-gray-300">
-          {/* --- Admin-only block: Explore + Dashboard --- */}
+          {/* Admin-only: Explore / Dashboard */}
           {isAdmin && (
             <div className="block py-2">
               <div className="px-8 text-lg pb-2">Explore</div>
@@ -114,21 +127,18 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
           )}
 
           <div className="block py-2">
-            {/* --- Section title varies: Admin sees "You"; non-admin can keep same for simplicity --- */}
-            <div className="px-8 text-lg pb-2">You</div>
-
-            {/* --- Admin-only items --- */}
+            {/* Admin-only items */}
             {isAdmin && (
               <>
                 <SideBarMenuContainer>
                   <Link
-                    to={`${routes.HISTORY}`}
-                    onClick={() => handleMenuClick("history")}
+                    to={`${routes.QUEUE}`}
+                    onClick={() => handleMenuClick("queque")}
                   >
-                    <div className={`${activeMenuClass("history")}`}>
+                    <div className={`${activeMenuClass("queque")}`}>
                       <div className="flex items-center py-3 space-x-4">
-                        <CalendarIcon height="24" width="24" />
-                        <h1 className="flex items-center">Employee</h1>
+                        <QueueListIcon height="24" width="24" />
+                        <h1 className="flex items-center">Queuing</h1>
                       </div>
                     </div>
                   </Link>
@@ -136,56 +146,10 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
 
                 <SideBarMenuContainer>
                   <Link
-                    to={`${routes.LAYAWAY}`}
-                    onClick={() => handleMenuClick("layaway")}
-                  >
-                    <div className={`${activeMenuClass("layaway")}`}>
-                      <div className="flex items-center py-3 space-x-4">
-                        <HomeIcon height="24" width="24" />
-                        <h1 className="flex items-center">Application</h1>
-                      </div>
-                    </div>
-                  </Link>
-                </SideBarMenuContainer>
-              </>
-            )}
-
-            {/* --- Shown to everyone: Queuing (your "payments" key) --- */}
-
-            <SideBarMenuContainer>
-              <Link
-                to={`${routes.QUEUE}`}
-                onClick={() => handleMenuClick("payments")}
-              >
-                <div className={`${activeMenuClass("payments")}`}>
-                  <div className="flex items-center py-3 space-x-4">
-                    <QueueListIcon height="24" width="24" />
-                    <h1 className="flex items-center">Queuing</h1>
-                  </div>
-                </div>
-              </Link>
-            </SideBarMenuContainer>
-
-            {/* --- Admin-only items --- */}
-            {isAdmin && (
-              <>
-                <SideBarMenuContainer>
-                  <Link
                     to={`${routes.HISTORY}`}
-                    onClick={() => handleMenuClick("history")}
+                    onClick={() => handleMenuClick("reports")}
                   >
-                    <div className={`${activeMenuClass("history")}`}>
-                      <div className="flex items-center py-3 space-x-4">
-                        <CalendarIcon height="24" width="24" />
-                        <h1 className="flex items-center">Inventory</h1>
-                      </div>
-                    </div>
-                  </Link>
-                </SideBarMenuContainer>
-
-                <SideBarMenuContainer>
-                  <Link to="" onClick={() => handleMenuClick("")}>
-                    <div className={`${activeMenuClass("")}`}>
+                    <div className={`${activeMenuClass("reports")}`}>
                       <div className="flex items-center py-3 space-x-4">
                         <ReceiptPercentIcon height="24" width="24" />
                         <h1 className="flex items-center">Reports</h1>
@@ -195,7 +159,10 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
                 </SideBarMenuContainer>
 
                 <SideBarMenuContainer>
-                  <Link to="" onClick={() => handleMenuClick("accounts")}>
+                  <Link
+                    to={`${routes.ACCOUNTS}`}
+                    onClick={() => handleMenuClick("accounts")}
+                  >
                     <div className={`${activeMenuClass("accounts")}`}>
                       <div className="flex items-center py-3 space-x-4">
                         <UserCircleIcon height="24" width="24" />
@@ -206,13 +173,15 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
                 </SideBarMenuContainer>
               </>
             )}
-            {isSubAdmin && (
+
+            {/* User-only (non-admin) — show only Queuing */}
+            {isUser && (
               <SideBarMenuContainer>
                 <Link
                   to={`${routes.QUEUE}`}
-                  onClick={() => handleMenuClick("payments")}
+                  onClick={() => handleMenuClick("queque")}
                 >
-                  <div className={`${activeMenuClass("payments")}`}>
+                  <div className={`${activeMenuClass("queque")}`}>
                     <div className="flex items-center py-3 space-x-4">
                       <QueueListIcon height="24" width="24" />
                       <h1 className="flex items-center">Queuing</h1>

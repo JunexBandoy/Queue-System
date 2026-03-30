@@ -1,55 +1,168 @@
-// Window.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { WindowIcon } from "@heroicons/react/24/solid";
+import { createRoot } from "react-dom/client";
+import { WindowIcon } from "@heroicons/react/24/solid"; // optional; remove if not needed
+
 import { ServingViewModel } from "../../models/ViewServing";
 import { ServingServices } from "../../services/Serving";
-import { createRoot } from "react-dom/client";
+import { WaitingViewModel } from "../../models/ViewWaiting";
+import { WaitingServices } from "../../services/Waiting";
 
 interface WindowviewProps {
   className?: string;
-  name?: string; // keep _blank to always open a new one
+  name?: string;
   width?: number;
   height?: number;
   /** Full YouTube EMBED URL (e.g., https://www.youtube.com/embed/VIDEO_ID?... ) */
   youtubeEmbedUrl?: string;
 }
 
-/** ------------------ React app that runs inside the popup ------------------ */
+/** ------------------ React app that runs inside the popup (no Tailwind) ------------------ */
 const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
   win,
   youtubeEmbedUrl,
 }) => {
+  // State
   const [serving, setServing] = useState<ServingViewModel[]>([]);
+  const [waiting, setWaiting] = useState<WaitingViewModel[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedDate, setLastUpdatedDate] = useState<string>("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const sections = [0, 1, 2, 3, 4, 5]; // Assuming you have 4 sections to cycle through
+  const delay = 5000; // Slide transition delay in milliseconds
 
-  // For the top card glow effect
-  const prevTopIdRef = useRef<number | null>(null);
+  const [newEntryId, setNewEntryId] = useState<number | null>(null);
+  const [isBlinking, setIsBlinking] = useState(false);
+  const shownModalIdsRef = useRef<Set<number>>(new Set());
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState<{
+    number: string;
+    service: string;
+  } | null>(null);
 
-  // 🔊 Tone audio element ref
+  // show modal for 5 seconds
+
+  const triggerModal = (number: string, service: string) => {
+    setModalData({ number, service });
+    setShowModal(true);
+
+    // Keep modal visible for 5 seconds
+    setTimeout(() => {
+      setShowModal(false);
+    }, 5000);
+  };
+
+  const triggerBlink = () => {
+    setIsBlinking(true);
+    setTimeout(() => setIsBlinking(false), 10000);
+  };
+
+  // Refs for announcement logic
   const newQueueAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // First load guard: don't announce anything on initial fetch
   const firstLoadRef = useRef(true);
-
-  // Track which IDs have been seen to detect newly posted queues
   const seenIdsRef = useRef<Set<number>>(new Set());
-
-  // FIFO queue for announcements (tone -> speech)
   const pendingRef = useRef<ServingViewModel[]>([]);
   const announcingRef = useRef<boolean>(false);
+  const prevTopIdRef = useRef<number | null>(null);
+
+  // Helpers
+  const normalizeOrder = (rows: ServingViewModel[]) =>
+    rows
+      .slice()
+      .sort((a, b) => ((a.id ?? 0) as number) - ((b.id ?? 0) as number));
+
+  const sortNewestFirst = <T extends { id?: number }>(rows: T[]) =>
+    rows
+      .slice()
+      .sort((a, b) => ((b.id ?? 0) as number) - ((a.id ?? 0) as number));
 
   const fetchServing = async () => {
     try {
-      const data = await ServingServices.getAll();
-      setServing(data);
+      const data = await ServingServices.getAllServing();
+      const ordered = normalizeOrder(data ?? []);
+
+      const currentIds = new Set(serving.map((s) => s.id));
+      const newEntries = ordered.filter((s) => !currentIds.has(s.id));
+
+      let updatedList = [...serving];
+
+      if (newEntries.length > 0) {
+        newEntries.forEach((entry) => {
+          updatedList.push(entry);
+          if (updatedList.length > 7) updatedList.shift();
+
+          // NEW ✅ modal popup when new call
+
+          if (entry.id && !shownModalIdsRef.current.has(entry.id)) {
+            shownModalIdsRef.current.add(entry.id);
+
+            triggerModal(
+              String(entry.que_number ?? ""),
+              String(
+                `${entry.first_name ?? ""} ${entry.last_name ?? ""}`.trim(),
+              ),
+            );
+          }
+
+          // your blink trigger (if any)
+          setNewEntryId(entry.id ?? null);
+          triggerBlink();
+        });
+      } else {
+        updatedList = ordered.slice(-7);
+      }
+
+      setServing(updatedList);
+
       setLastUpdated(
         new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
       );
+
+      setLastUpdatedDate(
+        new Date().toLocaleDateString([], {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "2-digit",
+        }),
+      );
+
+      setError(null);
+    } catch (err) {
+      console.error("Popup: error fetching serving list:", err);
+      setError("Unable to fetch latest data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWaiting = async () => {
+    try {
+      const data = await WaitingServices.getAllWaiting();
+      const ordered = normalizeOrder(data ?? []);
+      setWaiting(ordered);
+      setLastUpdated(
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+
+      // Date (new)
+
+      setLastUpdatedDate(
+        new Date().toLocaleDateString([], {
+          weekday: "long", // e.g., Friday
+          year: "numeric",
+          month: "long", // e.g., March
+          day: "2-digit", // e.g., 05
+        }),
+      );
+
       setError(null);
     } catch (err) {
       console.error("Popup: error fetching serving list:", err);
@@ -60,14 +173,28 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
   };
 
   useEffect(() => {
-    // Initial load
-    fetchServing();
-    // Poll for updates
-    const id = setInterval(fetchServing, 2000);
-    return () => clearInterval(id);
+    const intervalId = setInterval(() => {
+      setCurrentIndex((prevIndex) =>
+        prevIndex === sections.length - 1 ? 0 : prevIndex + 1,
+      );
+    }, delay);
+
+    return () => clearInterval(intervalId); // Clean up interval on component unmount
+  }, [sections.length]);
+
+  useEffect(() => {
+    const refresh = async () => {
+      await Promise.all([fetchServing(), fetchWaiting()]);
+    };
+
+    refresh();
+
+    const interval = setInterval(refresh, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Detect change at the top for gentle glow
+  // Detect change at the top item (you can style [data-top-changed="true"] if you want)
   const top = serving[0];
   const topChanged = useMemo(() => {
     const changed = top?.id && prevTopIdRef.current !== top.id;
@@ -76,9 +203,9 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [top?.id]);
 
-  /** ------------------ Audio + TTS helpers ------------------ */
+  /** ------------------ Audio + TTS helpers (unchanged) ------------------ */
 
-  // Spell out something like "A101" or 101 -> "A 1 0 1"
+  // Spell out something like "A101" -> "A 1 0 1"
   const spellOutQueue = (s?: string | number) => {
     if (s === undefined || s === null) return "";
     return String(s)
@@ -91,17 +218,17 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
       .toUpperCase();
   };
 
-  // Play the "new queue" tone (awaitable)
+  // Tone
   const playTone = () => {
     const a = newQueueAudioRef.current;
     if (!a) return Promise.resolve();
     a.currentTime = 0;
     a.volume = 1; // 0..1
     a.muted = false;
-    return a.play().catch(() => Promise.resolve()); // ignore if blocked
+    return a.play().catch(() => Promise.resolve()); // ignore if autoplay is blocked
   };
 
-  // Speak text using the popup's SpeechSynthesis (win)
+  // TTS (SpeechSynthesis)
   const speakText = (
     text: string,
     opts?: { lang?: string; rate?: number; pitch?: number; volume?: number },
@@ -115,39 +242,37 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
       if (!synth || !UtteranceCtor) return resolve();
 
       const u = new UtteranceCtor(text);
-      u.lang = opts?.lang ?? "en-PH"; // English (Philippines), falls back to EN
+
+      // ✅ Use default voice only
+      u.lang = opts?.lang ?? "en-US";
       u.rate = opts?.rate ?? 1;
       u.pitch = opts?.pitch ?? 1;
       u.volume = opts?.volume ?? 1;
 
-      const pickVoice = () => {
-        const voices = synth.getVoices();
-        return (
-          voices.find((v) => v.lang?.toLowerCase().startsWith("en-ph")) ||
-          voices.find((v) => v.lang?.toLowerCase().startsWith("en-")) ||
-          voices[0]
-        );
-      };
+      const loadVoices = () =>
+        new Promise<SpeechSynthesisVoice[]>((resolve) => {
+          const v = synth.getVoices();
+          if (v.length) return resolve(v);
 
-      const startSpeaking = () => {
-        const v = pickVoice();
-        if (v) (u as any).voice = v;
+          synth.onvoiceschanged = () => resolve(synth.getVoices());
+        });
+
+      const startSpeaking = async () => {
+        const voices = await loadVoices();
+        u.voice = voices[0] ?? null;
+
         u.onend = () => resolve();
         u.onerror = () => resolve();
-        if (synth.speaking) synth.cancel(); // avoid overlapping speech
+
+        if (synth.speaking) synth.cancel();
         synth.speak(u);
       };
 
-      if (!synth.getVoices().length) {
-        (synth as any).onvoiceschanged = () => startSpeaking();
-        setTimeout(startSpeaking, 300);
-      } else {
-        startSpeaking();
-      }
+      startSpeaking();
     });
   };
 
-  // Web Audio fallback beep (if you want a backup)
+  // Web Audio fallback beep
   const beepFallback = () => {
     try {
       const AC: any =
@@ -156,7 +281,7 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.value = 880; // A5
+      osc.frequency.value = 880;
       gain.gain.setValueAtTime(0.001, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
@@ -169,7 +294,7 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
     }
   };
 
-  // 🚦 Process the queue strictly in order: TONE → SPEECH → next
+  // Strictly process: TONE -> SPEECH -> next
   const processAnnouncements = async () => {
     if (announcingRef.current) return;
     const nextItem = pendingRef.current.shift();
@@ -177,27 +302,29 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
 
     announcingRef.current = true;
 
-    // 1) Tone first
-    try {
-      await playTone();
-    } catch {
-      beepFallback();
-    }
+    // 🔊 Play tone (no await)
+    playTone().catch(() => beepFallback());
 
-    // 2) Then speak
     const numberToSpeak = spellOutQueue(nextItem.que_number as any);
-    const service = nextItem.service_name ? `, ${nextItem.service_name}` : "";
-    await speakText(`Now serving queue ${numberToSpeak}${service}.`);
+    const first = nextItem.first_name ?? "";
+    const last = nextItem.last_name ?? "";
+    const fullName = `${first} ${last}`.trim();
+
+    // 🗣️ Speak immediately (no await)
+    speakText(`Now serving queue ${numberToSpeak}, ${fullName}.`, {
+      rate: 0.95,
+      pitch: 1,
+      volume: 1,
+      lang: "en-US",
+    });
 
     announcingRef.current = false;
 
-    // Continue if more items are pending
     if (pendingRef.current.length > 0) processAnnouncements();
   };
 
-  /** ------------------ Detect newly posted items ------------------ */
+  /** ------------------ Detect newly posted queues (after first load) ------------------ */
   useEffect(() => {
-    // Set of current IDs in this tick
     const currentIds = new Set(
       serving
         .map((s) => s.id)
@@ -205,208 +332,230 @@ const ServingPopupApp: React.FC<{ win: Window; youtubeEmbedUrl?: string }> = ({
     );
 
     if (firstLoadRef.current) {
-      // ✅ Initial load: seed and DO NOT announce
       seenIdsRef.current = currentIds;
       firstLoadRef.current = false;
       return;
     }
 
-    // Only after first load: detect new items
     const newlyAdded = serving.filter(
       (s) =>
         typeof s.id === "number" && !seenIdsRef.current.has(s.id as number),
     );
 
     if (newlyAdded.length > 0) {
-      // Queue them in display order
       pendingRef.current.push(...newlyAdded);
-      processAnnouncements(); // TONE → SPEECH
+      processAnnouncements();
     }
 
-    // Update snapshot
     seenIdsRef.current = currentIds;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serving]);
 
-  /** ------------------ UI ------------------ */
+  // ----- UI (minimal markup; you style in index.css) -----
+
   return (
-    <div
-      className="h-full w-full bg-cover bg-no-repeat bg-center"
-      style={{
-        backgroundImage: "url('/assets/denr1.jpg')", // ensure this exists under public/assets/
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-        width: "100%",
-        height: "100vh",
-      }}
-    >
-      {/* 🔊 Hidden audio element for the tone */}
+    <>
+      <div>
+        {/* Hidden audio element for the tone (ensure the file exists at this path) */}
+        <audio
+          ref={newQueueAudioRef}
+          src="/assets/new-queue.mp3"
+          preload="auto"
+        />
 
-      <audio
-        ref={newQueueAudioRef}
-        src="/assets/new-queue.mp3"
-        preload="auto"
-        style={{ display: "none" }}
-      />
-
-      <div className="app ">
-        {/* Header */}
-        <header className="header">
-          <div className="brand">
-            <div className="brand-icon" aria-hidden>
-              🌿
-            </div>
-            <div>
-              <div className="eyebrow">Queue Display</div>
-              <h1 className="title">Currently Serving</h1>
+        {/* Your header: className matches your index.css selector .header { ... } */}
+        <div className="header">
+          <div className="left">
+            <div className="l-text">
+              <h1>NOW SERVING</h1>
             </div>
           </div>
 
-          {/* Last updated + tiny spinner (non-blocking) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="pill" title="Last Updated">
-              {lastUpdated || "--:--"}
+          <div className="right" aria-live="polite">
+            <div className="l1">
+              <div className="logo"></div>
+              <div className="logo2"></div>
             </div>
-            {loading && (
-              <div
-                className="spinner"
-                title="Refreshing…"
-                style={{ width: 18, height: 18, borderWidth: 2 }}
-              />
-            )}
+            <div className="r1">
+              <div className="right-text" title="Last Updated">
+                {lastUpdatedDate
+                  ? `${lastUpdatedDate} — ${lastUpdated}`
+                  : lastUpdated || "--:--"}
+              </div>
+            </div>
+            {loading ? <div title="Refreshing…"></div> : null}
           </div>
+        </div>
 
-          <button
-            onClick={() => {
-              try {
-                win.close();
-              } catch {}
-            }}
-            className="btn"
-            title="Close window"
-          >
-            Close
-          </button>
-        </header>
+        <div className="main">
+          <div className="main-left">
+            <div className="main-left-content">
+              <table>
+                <thead>
+                  <tr className="tr">
+                    <th>NUMBER</th>
+                    <th>SERVICE</th>
+                  </tr>
+                </thead>
 
-        {/* Two-column layout: Left (Now Serving), Right (YouTube) */}
-        <main className="main two-col">
-          {/* LEFT: Serving content (always visible; placeholders if empty) */}
-          <section className="left">
-            <div className={`hero ${topChanged ? "hero-glow" : ""}`}>
-              <div className="hero-body">
-                <section
-                  className="grid gridwindows"
-                  style={{ display: "flex", flexWrap: "wrap", gap: 12 }}
-                >
+                <tbody>
                   {serving.map((q, idx) => {
-                    const pr = prioritBadge(q.priorit);
                     return (
-                      <div
-                        key={q.id}
-                        className={`card ${idx === 0 ? "card-active" : ""}`}
-                        style={{
-                          flex: "1 1 240px",
-                          minWidth: 240,
-                          maxWidth: 420,
-                        }} // adjust maxWidth if you want
+                      <tr
+                        key={q.id ?? idx}
+                        data-active={idx === 0 ? "true" : "false"}
+                        className={
+                          q.id === newEntryId ? "slide-in blink" : undefined
+                        }
                       >
-                        <div className="flex">
-                          <div className="card-row">
-                            <span className="card-queue">{q.que_number}</span>
-                            <span
-                              className="badge"
-                              style={{ background: pr.bg, color: pr.color }}
-                            >
-                              {pr.label}
-                            </span>
-                          </div>
-                          <div className="card-service">{q.service_name}</div>
-                          <div className="card-meta">
-                            <span className="dot" />
-                            <span className="meta-text">
-                              {q.status ?? "serving"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        <td className="qnumuber">{q.que_number}</td>
+                        <td>
+                          <span className="service">{q.service_name}</span>
+                        </td>
+                      </tr>
                     );
                   })}
-                </section>
+                </tbody>
+              </table>
+            </div>
+            <div className="waiting-content">
+              <div className="main-left-text">
+                <div className="l-text">
+                  <h1>WAITING</h1>
+                </div>
               </div>
+              <table>
+                <thead>
+                  <tr className="tr">
+                    <th>NUMBER</th>
+                    <th>SERVICE</th>
+                  </tr>
+                </thead>
+
+                <tbody className="waiting">
+                  {sortNewestFirst(waiting)
+                    .slice(0, 4)
+                    .map((q, idx) => (
+                      <tr
+                        key={q.id ?? idx}
+                        data-active={idx === 0 ? "true" : "false"}
+                      >
+                        <td className="waitingqnumber">{q.que_number}</td>
+                        <td>
+                          <span className="waitingservice">
+                            {q.service_name}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="main-right">
+            <div className="w-full bg-black h-[5px] mb-[1px]"></div>
+            <div className="video-wrapper relative">
+              {youtubeEmbedUrl ? (
+                <iframe
+                  src={youtubeEmbedUrl}
+                  title="YouTube video player"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              ) : (
+                <div>
+                  <div>▶</div>
+                  <div>YouTube area (add embed URL)</div>
+                </div>
+              )}
             </div>
 
-            {/* Cards grid */}
-          </section>
+            <div className="w-full bg-[#e7eae9] h-[5px]"></div>
 
-          {/* RIGHT: Media panel (Embedded YouTube) */}
-          <aside className="right">
-            <div className="media-card">
-              <div className="media-header">
-                <div className="media-title">Announcements</div>
-                <div className="media-sub">Watch while you wait</div>
-              </div>
-
-              <div className="video-wrap">
-                {youtubeEmbedUrl ? (
-                  <iframe
-                    className="video"
-                    // ✅ Your exact embed URL goes here:
-                    src={youtubeEmbedUrl}
-                    title="YouTube video player"
-                    // React prop names
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="video-placeholder">
-                    <div className="video-logo">▶</div>
-                    <div className="video-text">
-                      YouTube area (add embed URL)
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Optional mini-tips */}
-              <div className="media-tips">
-                <span>🌳 Please keep the area clean.</span>
-                <span>♻️ Support eco-friendly practices.</span>
-                <span>📢 Follow the screen for updates.</span>
+            <div className="slider-viewport">
+              <div
+                className="slider-track"
+                style={{
+                  transform: `translateX(-${currentIndex * 100}%)`,
+                  transition: "transform 0.5s ease-in-out",
+                }}
+              >
+                <div className="carousel" />
+                <div className="carousel1" />
+                <div className="carousel2" />
+                <div className="carousel3" />
+                <div className="carousel4" />
+                <div className="carousel5" />
+                <div className="carousel6" />
+                <div className="carousel7" />
+                <div className="carousel8" />
               </div>
             </div>
-          </aside>
-        </main>
-
-        {/* Footer ticker — subtle and friendly */}
-        <footer className="footer">
-          <div className="ticker">
-            <div className="ticker-track">
+            <div className="w-full    ">
+              <p className="text-center font-serif font-semibold tracking-widest p-2">
+                " IKAW MO BILIB SA SERBISYONG CENRO BISLIG "
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="info">
+        <div>
+          <div>
+            <span>📄 Please prepare your IDs & documents • </span>
+            <span>⏳ Thank you for your patience • </span>
+            <span>✅ priority lanes available for seniors & PWD • </span>
+            <span>🌱 Together, let’s care for our environment • </span>
+          </div>
+        </div>
+      </div>
+      <div className="footer">
+        <div className="marquee-viewport" aria-hidden="true">
+          <div className="marquee-track">
+            {/* Group 1 */}
+            <div className="marquee-group">
               <span>📄 Please prepare your IDs &amp; documents • </span>
               <span>⏳ Thank you for your patience • </span>
-              <span>✅ priorit lanes available for seniors &amp; PWD • </span>
+              <span>✅ priority lanes available for seniors &amp; PWD • </span>
+              <span>🌱 Together, let’s care for our environment • </span>
+            </div>
+
+            {/* Group 2 (duplicate of Group 1 for seamless looping) */}
+            <div className="marquee-group" aria-hidden="true">
+              <span>📄 Please prepare your IDs &amp; documents • </span>
+              <span>⏳ Thank you for your patience • </span>
+              <span>✅ priority lanes available for seniors &amp; PWD • </span>
               <span>🌱 Together, let’s care for our environment • </span>
             </div>
           </div>
-        </footer>
+        </div>
       </div>
-    </div>
+
+      {showModal && modalData && (
+        <div className="modal-overlay">
+          <div className="modal-content slide-modal">
+            <h1 className="modal-number">NOW SERVING</h1>
+
+            <h2 className="modal-big">{modalData.number}</h2>
+
+            <p className="modal-service tracking-widest font-thin uppercase">
+              {modalData.service}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
   );
 
-  // priorit badge helper
-  function prioritBadge(p?: string) {
+  function priorityBadge(p?: string) {
     const pr = (p || "").toLowerCase();
     if (pr === "senior" || pr === "pwd")
-      return { label: pr.toUpperCase(), bg: "var(--badge-red)", color: "#fff" };
+      return { label: pr.toUpperCase(), bg: "#ef4444", color: "#fff" };
     if (pr === "regular")
-      return { label: "REGULAR", bg: "var(--badge-blue)", color: "#fff" };
-    return {
-      label: (p || "N/A").toUpperCase(),
-      bg: "var(--badge-gray)",
-      color: "#fff",
-    };
+      return { label: "REGULAR", bg: "#2563eb", color: "#fff" };
+    return { label: (p || "N/A").toUpperCase(), bg: "#94a3b8", color: "#fff" };
   }
 };
 
@@ -418,8 +567,7 @@ export const Windowview: React.FC<WindowviewProps> = ({
   height = 720,
   youtubeEmbedUrl,
 }) => {
-  const openNewWindow = () => {
-    // Center the popup
+  const openNewWindow = async () => {
     const left =
       (window.screenX ?? (window as any).screenLeft ?? 0) +
       (window.outerWidth - width) / 2;
@@ -445,7 +593,7 @@ export const Windowview: React.FC<WindowviewProps> = ({
       win.focus();
     } catch {}
 
-    // Inject styles + root container (light theme WITHOUT background image)
+    // Minimal HTML for the popup (no CSS here)
     win.document.open();
     win.document.write(`<!doctype html>
 <html lang="en">
@@ -453,139 +601,6 @@ export const Windowview: React.FC<WindowviewProps> = ({
     <meta charset="utf-8" />
     <title>Now Serving</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      :root{
-        --paper:#ffffff;
-        --bg-tint: rgba(255,255,255,.85);
-        --stroke:rgba(15, 23, 42, 0.10);
-        --muted:#5b728a; /* slate-500-ish */
-        --text:#0f172a;  /* slate-900 */
-        --glass:rgba(255,255,255,0.55);
-        --accent-grad:linear-gradient(135deg, #34d399, #22c55e);   /* emerald */
-        --accent2-grad:linear-gradient(135deg, #60a5fa, #6366f1);  /* blue/indigo */
-        --badge-red:#ef4444; --badge-blue:#2563eb; --badge-gray:#94a3b8;
-        --soft-shadow:0 14px 36px rgba(2, 8, 23, .12);
-      }
-      *{box-sizing:border-box}
-      html,body{height:100%}
-      body{
-        margin:0;
-        color:var(--text);
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-        background:#ffffff; /* plain background, no image */
-      }
-      .app{min-height:100%;display:flex;flex-direction:column}
-      .header{
-        display:flex;align-items:center;justify-content:space-between;gap:16px;
-        padding:16px 20px;border-bottom:1px solid var(--stroke);
-        background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.75));
-        backdrop-filter:saturate(140%) blur(8px); position:sticky;top:0;
-      }
-      .brand{display:flex;align-items:center;gap:12px}
-      .brand-icon{
-        width:44px;height:44px;border-radius:12px;background:var(--accent-grad);
-        display:grid;place-items:center;font-size:20px;color:#fff;box-shadow:var(--soft-shadow)
-      }
-      .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-      .title{margin:2px 0 0;font-size:22px;font-weight:800;letter-spacing:-.02em}
-      .pill{
-        background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.8));
-        border:1px solid var(--stroke);
-        padding:8px 12px;border-radius:999px;font-weight:800;
-        font-variant-numeric:tabular-nums; box-shadow:var(--soft-shadow)
-      }
-      .btn{
-        background:linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.85));
-        border:1px solid var(--stroke);color:var(--text);
-        padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer;
-        transition:.2s transform,.2s background; box-shadow:var(--soft-shadow)
-      }
-      .btn:hover{transform:translateY(-1px); background:linear-gradient(180deg, #fff, #f8fafc)}
-
-      .main{flex:1;padding:18px 20px;display:grid;gap:16px}
-      .two-col{ grid-template-columns: 1.5fr 1fr; }
-      @media (max-width: 1024px){ .two-col{ grid-template-columns: 1fr; } }
-
-      .left{display:flex;flex-direction:column;gap:16px}
-      .right{position:relative}
-
-      .hero{
-        background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.8));
-        border:1px solid var(--stroke);border-radius:18px;padding:16px;
-        box-shadow:var(--soft-shadow)
-      }
-      @keyframes glow{0%,100%{box-shadow:var(--soft-shadow)}50%{box-shadow:0 0 0 10px rgba(34,197,94,.18), var(--soft-shadow)}}
-      .hero.hero-glow{animation:glow 1.8s ease-in-out 1}
-      .hero-top{display:flex;align-items:center;justify-content:space-between}
-      .count{font-weight:800}
-      .hero-body{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}
-      .queue-badge{
-        background:var(--accent-grad); border-radius:14px; padding:10px 14px;
-        display:flex; align-items:center; min-width:240px; justify-content:center;
-        box-shadow:0 14px 34px rgba(34,197,94,.25);
-      }
-      .queue-number{
-        color:#052e16; font-weight:900; letter-spacing:.02em;
-        font-size:46px; line-height:1; font-variant-numeric:tabular-nums;
-        text-shadow:0 1px 0 rgba(255,255,255,.4)
-      }
-      .hero-info{display:flex;flex-direction:column;gap:6px;min-width:240px}
-      .service{font-size:18px;font-weight:800;letter-spacing:.01em}
-      .badges{display:flex;align-items:center;gap:10px}
-      .badge{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;box-shadow:var(--soft-shadow)}
-      .status-dot{width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 8px rgba(34,197,94,.18)}
-      .status-text{color:var(--muted);font-weight:800}
-
-      .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));gap:12px}
-      .card{
-        background:linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.9));
-        border:1px solid var(--stroke);border-radius:14px;padding:12px;
-        display:flex;flex-direction:column;gap:8px;transition:.2s transform,.2s box-shadow; box-shadow:var(--soft-shadow)
-      }
-      .card:hover{transform:translateY(-2px)}
-      .card-active{outline:2px solid rgba(34,197,94,.35)}
-      .card-row{display:flex;align-items:center;justify-content:space-between}
-      .card-queue{
-        font-size:24px;font-weight:900;letter-spacing:.02em;
-        background:var(--accent2-grad); -webkit-background-clip:text; background-clip:text; color:transparent;
-        text-shadow:0 1px 0 rgba(255,255,255,.4);
-        font-variant-numeric:tabular-nums;
-      }
-      .card-service{font-size:14px;color:#0f172a}
-      .card-meta{display:flex;align-items:center;gap:8px;color:#muted}
-      .dot{width:8px;height:8px;border-radius:50%;background:#22c55e}
-
-      /* Media (YouTube) panel */
-      .media-card{
-        background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.82));
-        border:1px solid var(--stroke);border-radius:18px; padding:14px;
-        box-shadow:var(--soft-shadow); display:flex; flex-direction:column; gap:12px;
-      }
-      .media-header{display:flex; align-items:baseline; gap:10px; justify-content:space-between}
-      .media-title{font-weight:800; font-size:18px}
-      .media-sub{color:var(--muted); font-weight:600; font-size:12px}
-      .video-wrap{position:relative; width:100%; padding-top:56.25%; border-radius:12px; overflow:hidden; background:#f1f5f9; border:1px solid var(--stroke)}
-      .video{position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:12px}
-      .video-placeholder{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#334155}
-      .video-logo{font-size:36px; opacity:.7}
-      .video-text{font-weight:700}
-      .media-tips{display:flex; gap:12px; flex-wrap:wrap; color:#334155}
-      .media-tips span{background:rgba(255,255,255,.8); border:1px solid var(--stroke); padding:6px 10px; border-radius:999px; font-weight:700}
-
-      .footer{border-top:1px solid var(--stroke);padding:8px 0;margin-top:auto;background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.75))}
-      .ticker{overflow:hidden}
-      .ticker-track{display:inline-block;white-space:nowrap;animation:ticker 18s linear infinite;color:#1f2937}
-      @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-
-      .spinner{width:30px;height:30px;border-radius:50%;border:3px solid rgba(2,8,23,.12);border-top-color:#22c55e;animation:spin 1s linear infinite}
-      @keyframes spin{to{transform:rotate(360deg)}}
-
-      @media (max-width: 640px){
-        .title{font-size:18px}
-        .queue-number{font-size:38px}
-        .service{font-size:16px}
-      }
-    </style>
   </head>
   <body>
     <div id="popup-root"></div>
@@ -593,6 +608,28 @@ export const Windowview: React.FC<WindowviewProps> = ({
 </html>`);
     win.document.close();
 
+    // 🔽 🔽 🔽 Your requested code to copy styles into the popup 🔽 🔽 🔽
+
+    // Copy external stylesheets (production)
+    document
+      .querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')
+      .forEach((link) => {
+        const copy = win.document.createElement("link");
+        copy.rel = "stylesheet";
+        copy.href = link.href; // same CSS file as parent
+        win.document.head.appendChild(copy);
+      });
+
+    // Copy inline <style> tags (development / HMR)
+    document.querySelectorAll<HTMLStyleElement>("style").forEach((styleEl) => {
+      const s = win.document.createElement("style");
+      s.textContent = styleEl.textContent || "";
+      win.document.head.appendChild(s);
+    });
+
+    // 🔼 🔼 🔼 End of style-copy block 🔼 🔼 🔼
+
+    // Mount React app AFTER styles are in place
     const container = win.document.getElementById("popup-root");
     if (!container) {
       win.close();
@@ -630,9 +667,10 @@ export const Windowview: React.FC<WindowviewProps> = ({
       onClick={openNewWindow}
       aria-label="Open serving window"
       title="Open serving window"
-      className={`ml-auto px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition flex items-center ${className ?? ""}`}
+      className={className}
     >
-      <WindowIcon className="h-6 w-6 text-yellow-400 hover:text-pink-500 transition-colors duration-300" />
+      <WindowIcon style={{ width: 24, height: 24, verticalAlign: "middle" }} />
+      <span style={{ marginLeft: 8 }}>Window</span>
     </button>
   );
 };

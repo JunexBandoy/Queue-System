@@ -1,7 +1,7 @@
 // services/Api.ts
 import axios from "axios";
 
-const API_BASE_URL = "http://127.0.0.1:8000"; // adjust if needed
+const API_BASE_URL = "https://api.dc-bis.com"; // adjust if needed
 
 function getToken(): string | null {
   // MUST match your storage key in login(): localStorage.setItem("token", token)
