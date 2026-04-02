@@ -40,7 +40,8 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
   }, [location.pathname]);
 
   const isAdmin = role === "admin";
-  const isUser = role === "user"; // everything non-admin defaults to limited view
+  const isUser = role === "user";
+  const isPacd = role === "pacd";
 
   const setActiveMenuByRoute = (routePath: string) => {
     if (routePath === routes.HOME) {
@@ -48,6 +49,8 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
     } else if (routePath === routes.ACCOUNTS) {
       setActiveMenu("accounts");
     } else if (routePath === routes.QUEUE) {
+      setActiveMenu("queque"); // keep your existing key
+    } else if (routePath === routes.ADMIN) {
       setActiveMenu("queque"); // keep your existing key
     } else if (routePath === routes.HISTORY) {
       setActiveMenu("reports");
@@ -61,9 +64,23 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
   };
 
   useEffect(() => {
-    setActiveMenu(localStorage.getItem("activeMenu") || null);
-    setActiveMenuByRoute(location.pathname);
-  }, [location.pathname]);
+    const current = localStorage.getItem("activeMenu");
+    if (!current) return;
+
+    if (isUser) {
+      if (current !== "queque") {
+        localStorage.setItem("activeMenu", "queque");
+        setActiveMenu("queque");
+      }
+    }
+
+    if (isPacd) {
+      if (current !== "queque") {
+        localStorage.setItem("activeMenu", "queque");
+        setActiveMenu("queque");
+      }
+    }
+  }, [isAdmin, isUser, isPacd]);
 
   // Optional: keep activeMenu valid for the current role
   useEffect(() => {
@@ -132,7 +149,7 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
               <>
                 <SideBarMenuContainer>
                   <Link
-                    to={`${routes.QUEUE}`}
+                    to={`${routes.ADMIN}`}
                     onClick={() => handleMenuClick("queque")}
                   >
                     <div className={`${activeMenuClass("queque")}`}>
@@ -179,6 +196,21 @@ export const Sidebar: React.FC<Props> = ({ displayName, email }) => {
               <SideBarMenuContainer>
                 <Link
                   to={`${routes.QUEUE}`}
+                  onClick={() => handleMenuClick("queque")}
+                >
+                  <div className={`${activeMenuClass("queque")}`}>
+                    <div className="flex items-center py-3 space-x-4">
+                      <QueueListIcon height="24" width="24" />
+                      <h1 className="flex items-center">Queuing</h1>
+                    </div>
+                  </div>
+                </Link>
+              </SideBarMenuContainer>
+            )}
+            {isPacd && (
+              <SideBarMenuContainer>
+                <Link
+                  to={`${routes.ADMIN}`}
                   onClick={() => handleMenuClick("queque")}
                 >
                   <div className={`${activeMenuClass("queque")}`}>

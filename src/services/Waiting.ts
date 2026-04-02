@@ -1,9 +1,7 @@
 import axios from "axios";
-import { getDataUrl } from "../core/utils/dataUrls";
-import { WaitingTableResultViewModel } from "../models/ViewWaiting";
 import { api } from "./Api";
 
-const API_URL = "http://127.0.0.1:8000/api/waiting";
+const API_URL = "https://api.dc-bis.com/api/waiting";
 
 export const WaitingServices = {
   getAll: async () => {

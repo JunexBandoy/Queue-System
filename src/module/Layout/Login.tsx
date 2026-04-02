@@ -19,18 +19,17 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      // login() returns the user object and also saves token + user to localStorage
       const user = await login(form.email, form.password);
-
-      // Role-based redirect:
-      // - admin     -> home (index)
-      // - non-admin -> payments (queue)
       const role = user?.role ?? null;
 
       if (role === "admin") {
-        window.location.href = "#/"; // land on Home
+        window.location.href = "#/dashboard";
+      } else if (role?.toLowerCase() === "pacd") {
+        window.location.href = "#/aqueue";
+      } else if (role === "user") {
+        window.location.href = "#/queque";
       } else {
-        window.location.href = "#/queque"; // land on Payments/Queue
+        window.location.href = "#/queque";
       }
     } catch (error: any) {
       alert(error?.response?.data?.message || "Login failed");

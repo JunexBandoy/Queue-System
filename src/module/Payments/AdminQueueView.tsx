@@ -10,12 +10,14 @@ import { QueuesServices } from "../../services/Queues";
 import { QueuesViewModel } from "../../models/Queues";
 import { Services } from "../../services/Services";
 import { ServiceViewModel } from "../../models/Services";
+import { WaitingServices } from "../../services/Waiting";
+import { ServingServices } from "../../services/Serving";
 
 /* ===========================
    NEW: Minimal print helper
    =========================== */
 
-export const PaymentList = () => {
+export const AdminQueueView = () => {
   const [data, setData] = useState<QueuesViewModel[]>([]);
   const [serving, setserving] = useState<QueuesViewModel[]>([]);
   const [section, setSection] = useState<ServiceViewModel[]>([]);
@@ -38,7 +40,7 @@ export const PaymentList = () => {
 
   const fetchWaiting = async () => {
     try {
-      const waiting = await QueuesServices.getAllWaiting();
+      const waiting = await WaitingServices.getAllWaiting();
       setData(waiting);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -47,7 +49,7 @@ export const PaymentList = () => {
 
   const fetchServing = async () => {
     try {
-      const serving = await QueuesServices.getAllServing();
+      const serving = await ServingServices.getAllServing();
       setserving(serving);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -140,31 +142,6 @@ export const PaymentList = () => {
   /* ==================================
      NEW: Print the most recent queue
      ================================== */
-  // const handlePrintLast = () => {
-  //   // Prefer latest from Waiting; if none, fallback to Serving.
-  //   // Using array order as "latest":
-  //   const latestWaiting =
-  //     data && data.length > 0 ? data[data.length - 1] : undefined;
-  //   const latestServing =
-  //     serving && serving.length > 0 ? serving[serving.length - 1] : undefined;
-
-  //   // If you'd rather use the highest ID instead of array order, use this:
-  //   // const latestWaiting = data?.slice().sort((a, b) => (a.id ?? 0) - (b.id ?? 0)).pop();
-  //   // const latestServing = serving?.slice().sort((a, b) => (a.id ?? 0) - (b.id ?? 0)).pop();
-
-  //   const latest = latestWaiting ?? latestServing;
-
-  //   if (!latest?.que_number) {
-  //     alert("No queue found to print.");
-  //     return;
-  //   }
-
-  //   printQueueNumber58({
-  //     qNumber: String(latest.que_number),
-  //     widthMm: 58,
-  //     paddingMm: 4,
-  //   });
-  // };
 
   const handlePrintQueue = (queueNumber: number | string) => {
     printQueueNumber58({

@@ -1,10 +1,7 @@
 import axios from "axios";
-
-import { getDataUrl } from "../core/utils/dataUrls";
-import { ServingTableResultViewModel } from "../models/ViewServing";
 import { api } from "./Api";
 
-const API_URL = "http://127.0.0.1:8000/api/serving";
+const API_URL = "https://api.dc-bis.com/api/serving";
 
 export const ServingServices = {
   getAll: async () => {

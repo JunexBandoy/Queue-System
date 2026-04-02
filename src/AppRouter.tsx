@@ -5,12 +5,12 @@ import { Properties, PropertyList } from "./module/Properties";
 import { Dashboard } from "./module/Dashboard/Dashboard";
 import { PropertyDetails } from "./module/Properties/PropertyDetails";
 import { Bookings, Calendars } from "./module/Bookings";
-import { Home } from "./module/Home/Home";
 import { PaymentList } from "./module/Payments/PaymentList";
 import { Payments } from "./module/Payments";
 import { ProtectedRoute } from "./Auth/ProtectedRoute";
 import LoginForm from "./module/Layout/Login";
 import { useAuth } from "./Auth/AuthContext";
+import { AdminQueueView } from "./module/Payments/AdminQueueView";
 
 /**
  * Role-aware landing component for the index route.
@@ -19,16 +19,24 @@ import { useAuth } from "./Auth/AuthContext";
  *
  * Assumes `localStorage.user` contains { role: string } set by your login flow.
  */
+
 function RoleLanding() {
   const { role } = useAuth();
 
   if (role === "admin") {
-    return <Home />;
-  } else {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (role === "pacd" || role === "PACD") {
+    return <Navigate to="/aqueue" replace />;
+  }
+
+  if (role === "user") {
     return <Navigate to="/queque" replace />;
   }
-}
 
+  return <Navigate to="/aqueue" replace />;
+}
 export const AppRouter = createHashRouter([
   {
     path: "/login",
@@ -57,6 +65,16 @@ export const AppRouter = createHashRouter([
               {
                 index: true,
                 element: <PaymentList />,
+              },
+            ],
+          },
+          {
+            path: "aqueue",
+            element: <Payments />,
+            children: [
+              {
+                index: true,
+                element: <AdminQueueView />,
               },
             ],
           },

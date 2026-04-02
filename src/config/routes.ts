@@ -4,6 +4,7 @@ export const routes = {
   LOGIN: "/login",
   SIGNUP: "/signup",
   QUEUE: "/queque",
+  ADMIN: "/aqueue",
   EMPLOYEE: "/payments",
   INVENTORY: "/payments",
   HISTORY: "/reports",
